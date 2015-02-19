@@ -1,27 +1,41 @@
--- This is all a direct rip off of John Day's "Generating Feedback in Alfred 2"
+-- This is based on John Day's really great"Generating Feedback in Alfred 2"
 -- example: http://www.johneday.com/617/generate-feedback-in-alfred-2-workflows
+-- Also: there is a TON of room for improvement, so please feel free to make
+-- suggestions.
 
 ----------------------------------------
 -- Here we get info from Chrome about its windows and tabs
 ----------------------------------------
 on run argv
   try
-    --coerce the argv list to text
+    -- get command line arguments and convert them to text
     set query to argv as text
+    
+    -- These are a bunch of lists for storing data,
+    -- we don't use all of them, this is something to clean up.
     
     set tablist to {}
     set itemList to {}
     set tabTitles to {}
     set tabIds to {}
     set tabIndexes to {}
+    set windowIndexes to {}
     set windowIds to {}
     set tabUrls to {}
-    
+    set windowArrayPositions to {} 
+    set windowTitles to {} 
     
     tell application "Google Chrome"
+      -- create a temporary list of every window in Chrome
       set tempWinlist to every window
-      repeat with win in every window
-        set tempTablist to every tab of win
+
+      -- for every window in Chrome, do the following block
+      repeat with windowCount from 1 to count of tempWinList
+
+        -- create a temp list of all tabs for this window
+        set tempTablist to every tab of (item windowCount of tempWinList)
+        set win to (item windowCount of tempWinList)
+
         repeat with x from 1 to count of tempTablist
           
           set thisTabTitle to (title of item x of tempTablist)
@@ -31,19 +45,30 @@ on run argv
           -- These redundant loops should be put into a function,
           -- but I'm still learning AppleScript
 
-          if query is in thisTabTitle then
-            set end of tabTitles to thisTabTitle
-            set end of tabIds to (id of item x of tempTablist)
-            set end of tabIndexes to x
-            set end of windowIds to id of win
-            set end of tabUrls to thisTabUrl
-          else if query is in thisTabUrl then
-            set end of tabTitles to thisTabTitle
-            set end of tabIds to (id of item x of tempTablist)
-            set end of tabIndexes to x
-            set end of windowIds to id of win
-            set end of tabUrls to thisTabUrl
-          end if
+          ignoring case
+            if query is in thisTabTitle then
+              set end of tabTitles to thisTabTitle
+              set end of tabIndexes to x
+              set end of tabUrls to thisTabUrl
+              -- windowArrayPositions is the number of the item in 'windows', not the visibility index
+              set end of windowArrayPositions to windowCount
+
+              -- These other lists were different ways of getting data that
+              -- didn't work, but I'm leaving them commented for reference
+
+              -- set end of tabIds to (id of item x of tempTablist)
+              -- set end of windowTitles to (title of win)
+              -- set end of windowIds to (id of win)
+              -- set end of windowIndexes to index of win
+            -- Clearly there's a way to not have to repeat this block, but
+            -- AppleScript's function / control flow is new to me.
+            else if query is in thisTabUrl then
+              set end of tabTitles to thisTabTitle
+              set end of tabIndexes to x
+              set end of tabUrls to thisTabUrl
+              set end of windowArrayPositions to windowCount
+            end if
+          end ignoring 
           
         end repeat
       end repeat
@@ -53,7 +78,7 @@ on run argv
     -- Later we can act on those in a separate script that opens the proper tab in Chrome
     
     repeat with x from 1 to count of tabTitles
-      set chromeArgs to (item x of tabIndexes as text) & "." & (item x of windowIds as text)
+      set chromeArgs to (item x of tabIndexes as text) & "." & (item x of windowArrayPositions as text)
       set end of itemList to xmlItem({uid:"", arg:chromeArgs, title:(item x of tabTitles as string), subtitle:(item x of tabUrls as string)})
     end repeat
     
@@ -68,7 +93,7 @@ on run argv
   end try
 end run
 
-
+-- Everything below this line is untouched from John Day's original filter example.
 ----------------------------------------
 -- HANDLERS --
 ----------------------------------------
